@@ -1,17 +1,18 @@
--- Run after creating the single owner in Supabase Authentication > Users.
--- Replace OWNER_USER_UUID below with that user's UUID before running.
+-- Configure invoice_private.owner privately after applying this schema.
+-- Access requires the approved email to be confirmed by Supabase Auth.
 begin;
 create schema if not exists invoice_private;
 revoke all on schema invoice_private from public, anon, authenticated;
-create table if not exists invoice_private.owner (singleton boolean primary key default true check (singleton), user_id uuid not null references auth.users(id));
-insert into invoice_private.owner(singleton,user_id) values(true,'OWNER_USER_UUID'::uuid)
-on conflict(singleton) do update set user_id=excluded.user_id;
-create or replace function public.invoice_is_owner() returns boolean
+grant usage on schema invoice_private to authenticated;
+create table if not exists invoice_private.owner (singleton boolean primary key default true check (singleton), email text not null);
+alter table invoice_private.owner enable row level security;
+revoke all on invoice_private.owner from public,anon,authenticated;
+create or replace function invoice_private.invoice_is_owner() returns boolean
 language sql stable security definer set search_path='' as $$
- select exists(select 1 from invoice_private.owner where user_id=auth.uid());
+ select auth.uid() is not null and exists(select 1 from invoice_private.owner o join auth.users u on lower(u.email)=lower(o.email) where u.id=auth.uid() and u.email_confirmed_at is not null);
 $$;
-revoke all on function public.invoice_is_owner() from public, anon;
-grant execute on function public.invoice_is_owner() to authenticated;
+revoke all on function invoice_private.invoice_is_owner() from public, anon;
+grant execute on function invoice_private.invoice_is_owner() to authenticated;
 create table if not exists public.invoice_cloud_state (
  owner_id uuid primary key references auth.users(id),
  payload jsonb not null,
@@ -23,13 +24,13 @@ revoke all on public.invoice_cloud_state from anon;
 grant select,insert,update on public.invoice_cloud_state to authenticated;
 drop policy if exists single_owner on public.invoice_cloud_state;
 create policy single_owner on public.invoice_cloud_state for all to authenticated
-using(owner_id=auth.uid() and public.invoice_is_owner())
-with check(owner_id=auth.uid() and public.invoice_is_owner());
+using(owner_id=(select auth.uid()) and (select invoice_private.invoice_is_owner()))
+with check(owner_id=(select auth.uid()) and (select invoice_private.invoice_is_owner()));
 create or replace function public.invoice_sync(expected_version bigint, new_payload jsonb)
 returns bigint language plpgsql security invoker set search_path='' as $$
 declare current_version bigint;
 begin
- if not public.invoice_is_owner() then raise exception 'access_denied'; end if;
+ if not invoice_private.invoice_is_owner() then raise exception 'access_denied'; end if;
  if jsonb_typeof(new_payload->'invoices') is distinct from 'array' or jsonb_typeof(new_payload->'catalog') is distinct from 'array' or jsonb_typeof(new_payload->'settings') is distinct from 'object' then raise exception 'invalid_payload'; end if;
  if expected_version=0 then
   insert into public.invoice_cloud_state(owner_id,payload,version) values(auth.uid(),new_payload,1) on conflict(owner_id) do nothing;
