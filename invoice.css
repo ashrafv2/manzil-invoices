@@ -12,3 +12,5 @@
 .paper .sums td.sum-label{text-align:right;white-space:normal}
 .paper img.stamp{width:160px;height:auto;aspect-ratio:1/1;object-fit:contain;max-width:100%;image-rendering:auto;break-inside:avoid}
 @media print{.paper img.stamp{width:42mm;height:auto}.paper .sums .amount-col{width:24mm}.paper .sums .currency-col{width:7mm}}
+
+.paper .qr{width:145px;min-width:145px;color:#111;font-size:9px;line-height:1.6}.paper .qr svg{display:block;width:145px;height:145px;background:#fff;shape-rendering:crispEdges}@media print{.paper .qr{width:38mm;min-width:38mm}.paper .qr svg{width:38mm;height:38mm}}
