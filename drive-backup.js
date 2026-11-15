@@ -8,7 +8,5 @@ function last(){const stored=localStorage.getItem(lastKey);$('driveLastBackup').
 $('driveExport').onclick=()=>{if($('saveState').textContent.includes('غير محفوظة')&&!confirm('توجد تعديلات غير محفوظة في الفاتورة. النسخة ستشمل البيانات المحفوظة فقط. متابعة التنزيل؟'))return;$('backup').onclick();localStorage.setItem(lastKey,new Date().toISOString());last();$('driveBackupStatus').textContent='تم طلب تنزيل ملف النسخة. بعد اكتمال التنزيل، افتح Google Drive وارفع الملف لإتمام الحفظ.'};
 $('driveRestore').onclick=()=>{$('restore').onclick();$('driveBackupStatus').textContent='اختر ملف JSON الذي نزلته من Google Drive؛ ستُراجع البيانات ويُطلب تأكيد الاستبدال.'};
 const originalRestore=$('file').onchange;$('file').onchange=async()=>{const before=data;await originalRestore();if(data!==before){$('driveBackupStatus').textContent='تمت استعادة النسخة على هذا الجهاز بنجاح.';if($('dueDate'))$('dueDate').value=$('date').value}else $('driveBackupStatus').textContent='لم تُستكمل الاستعادة. راجع الرسالة الظاهرة أو اختر الملف مجددًا.'};
-// Keep automatic cloud uploads paused while the chosen backup method is manual.
-const cloud=$('cloud-settings');if(cloud){const note=document.createElement('p');note.className='note';note.textContent='طريقة الحفظ المختارة: نسخ يدوي عبر Google Drive. الرفع التلقائي إلى Supabase متوقف.';cloud.prepend(note)}
 if(location.hash==='#backup')page('driveBackup');
 })();
